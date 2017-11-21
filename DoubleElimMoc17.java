@@ -7,29 +7,39 @@ import java.util.Stack;
 import java.util.LinkedList;
 import java.util.Queue;
 
+
+/**
+ * Generates queues and stacks to keep track of the current state of the competition.
+ *
+ *
+ *
+ */
 public class DoubleElimMoc17 implements IManager {
-    private Queue<String> winnersQueue;
-    private Queue<String> losersQueue;
+    private Queue<String> stateOfWinnersQueue; //stores the state the queues are in after poll
+    private Queue<String> stateOfLosersQueue;  //^^
+    private Queue<String> winnersQueue; //The queue to remove from
+    private Queue<String> losersQueue;  //^^
     private Match currentPlayers;
     private String winner;
     private Boolean whatQueue;
-    private Stack<StateOfMatch> undoStack;
+    private Boolean lastMatch;
+    private Stack<StateOfQueues> undoStack;
+    private Stack<StateOfQueues> redoStack;
 
-    public class StateOfMatch{
-        private Match currentMatch;
-        private int whereYouCameFrom;
+    private class StateOfQueues{
+        private Queue<String> currentWinnersQueue;
+        private Queue<String> currentLosersQueue;
 
-        private StateOfMatch(Match currentMatch, int whereYouCameFrom){
-            this.currentMatch = currentMatch;
-            this.whereYouCameFrom = whereYouCameFrom;
+        private StateOfQueues(Queue<String> currentWinnersQueue, Queue<String> currentLosersQueue){
+            this.currentLosersQueue = currentLosersQueue;
+            this.currentWinnersQueue = currentWinnersQueue;
         }
 
-        Match getCurrentMatch(){
-            return currentMatch;
+        private Queue<String> getWinnersQueue(){return currentWinnersQueue;
         }
 
-        int getWhereYouCameFrom(){
-            return whereYouCameFrom;
+        private Queue<String> getLosersQueue(){
+            return currentLosersQueue;
         }
 
     }
@@ -38,9 +48,12 @@ public class DoubleElimMoc17 implements IManager {
 
     @Override
     public void setPlayers(ArrayList<String> players) {
-        this.undoStack = new Stack<>();
-        this.winnersQueue = new LinkedList<>();
-        this.losersQueue = new LinkedList<>();
+        lastMatch = false;
+        undoStack = new Stack<>();
+        redoStack = new Stack<>();
+        winnersQueue = new LinkedList<>();
+        losersQueue = new LinkedList<>();
+
         for (String player: players){
             winnersQueue.add(player);
         }
@@ -52,7 +65,7 @@ public class DoubleElimMoc17 implements IManager {
         return (winnersQueue.size() > 1 ||
                 losersQueue.size() > 1 ||
                 (winnersQueue.size() == 1 && losersQueue.size() == 1)
-                || currentPlayers != null);
+                || !lastMatch);
     }
 
     @Override
@@ -60,7 +73,8 @@ public class DoubleElimMoc17 implements IManager {
         if(!hasNextMatch()) {
             throw new NoNextMatchException("No next match");
         }
-
+        stateOfWinnersQueue = copyQueue(winnersQueue);
+        stateOfLosersQueue = copyQueue(losersQueue);
         if (winnersQueue.size() > losersQueue.size()){
             currentPlayers = new Match(winnersQueue.poll(), winnersQueue.poll());
             whatQueue = true;
@@ -79,13 +93,19 @@ public class DoubleElimMoc17 implements IManager {
 
     @Override
     public void setMatchWinner(boolean player1) {
+        redoStack.clear();
+        undoStack.push(new StateOfQueues(copyQueue(stateOfWinnersQueue), copyQueue(stateOfLosersQueue)));
         if (winnersQueue.size() == 0 && losersQueue.size() == 0 && !whatQueue){
+            lastMatch = true;
             if(player1){
                 winner = currentPlayers.getPlayer1();
+                stateOfWinnersQueue.clear();
+                stateOfLosersQueue.clear();
             } else {
                 winner = currentPlayers.getPlayer2();
+                stateOfWinnersQueue.clear();
+                stateOfLosersQueue.clear();
             }
-            undoStack.push(new StateOfMatch(currentPlayers, 3));
             currentPlayers = null;
         }
         else {
@@ -97,7 +117,6 @@ public class DoubleElimMoc17 implements IManager {
                     winnersQueue.add(currentPlayers.getPlayer2());
                     losersQueue.add(currentPlayers.getPlayer1());
                 }
-                undoStack.push(new StateOfMatch(currentPlayers, 1));
                 currentPlayers = null;
             } else {
                 if (player1) {
@@ -106,7 +125,6 @@ public class DoubleElimMoc17 implements IManager {
                 } else {
                     losersQueue.add(currentPlayers.getPlayer2());
                 }
-                undoStack.push(new StateOfMatch(currentPlayers, 2));
                 currentPlayers = null;
             }
         }
@@ -120,38 +138,28 @@ public class DoubleElimMoc17 implements IManager {
 
     @Override
     public void undo() {
-        if (canUndo()){
-            Queue<String> tempWinnersQueue = new LinkedList<>();
-            Queue<String> tempLosersQueue = new LinkedList<>();
-            StateOfMatch currentUndo = undoStack.pop();
-            if (currentUndo.getWhereYouCameFrom() == 1){
-                tempWinnersQueue.add(currentUndo.getCurrentMatch().getPlayer1());
-                tempWinnersQueue.add(currentUndo.getCurrentMatch().getPlayer2());
-                while(winnersQueue.size() > 1){
-                    tempWinnersQueue.add(winnersQueue.poll());
-                }
-                while(losersQueue.size() > 1){
-                    tempLosersQueue.add(losersQueue.poll());
-                }
-                winnersQueue = tempWinnersQueue;
-                losersQueue = tempLosersQueue;
-            } else if (currentUndo.getWhereYouCameFrom() == 2){
-                tempLosersQueue.add(currentUndo.getCurrentMatch().getPlayer1());
-                tempLosersQueue.add(currentUndo.getCurrentMatch().getPlayer2());
-                while(losersQueue.size() > 1){
-                    tempLosersQueue.add(losersQueue.poll());
-                }
-                losersQueue = tempLosersQueue;
-            } else {
-                winnersQueue.add(currentUndo.getCurrentMatch().getPlayer1());
-                losersQueue.add(currentUndo.getCurrentMatch().getPlayer2());
-            }
+        if (canUndo()) {
+            lastMatch = false;
+            redoOrUndoAlgorithm(redoStack, undoStack);
         }
+    }
+
+    private void redoOrUndoAlgorithm(Stack<StateOfQueues> pushStack, Stack<StateOfQueues> popStack){
+        pushStack.push(new StateOfQueues(copyQueue(stateOfWinnersQueue), copyQueue(stateOfLosersQueue)));
+        StateOfQueues currentQueues = popStack.pop();
+        winnersQueue = currentQueues.getWinnersQueue();
+        losersQueue = currentQueues.getLosersQueue();
+        stateOfLosersQueue = copyQueue(losersQueue);
+        stateOfWinnersQueue = copyQueue(winnersQueue);
+
     }
 
     @Override
     public void redo() {
-
+        if (canRedo()){
+            redoOrUndoAlgorithm(undoStack, redoStack);
+            if (redoStack.empty()) lastMatch = true;
+        }
     }
 
     @Override
@@ -161,7 +169,16 @@ public class DoubleElimMoc17 implements IManager {
 
     @Override
     public boolean canRedo() {
-        return false;
+        if(redoStack.empty()) return false;
+        return true;
+    }
+
+    private Queue<String> copyQueue(Queue<String> queue){
+        Queue<String> newQueue = new LinkedList<>();
+        for(String player: queue){
+            newQueue.add(player);
+        }
+        return newQueue;
     }
 }
 
