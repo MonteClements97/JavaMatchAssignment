@@ -57,12 +57,18 @@ import java.util.Queue;
  * overall winner is then decided on this match. I believe I have done everything that has been asked in specification, so
  * I do expect a high mark for this section.
  * </p><p>
- * Likewise competition logic, I believe I have implemented Undo and Redo very effectively. I believe I have done everything
+ * Likewise competition logic, I believe I have implemented Undo and Redo very effectively, so I believe I would get around
+ * 22% out of 30% for this section. I believe I have done everything
  * that has been asked of me on this section. Undo does not work on the first match, and redo does not work unless there
  * has been an undo performed before hand. The redo stack is cleared if the program resumes after an undo. However, in
  * competition manager, if you undo and then redo on the final match, the program will just exit. This is because after it
  * redoes the last match, it then checks if there is a next match. As it is, lastMatch will be set to true, which when it
  * hits the while hasNextMatch(), it will return as false and then exit the program.
+ * </p><p>
+ * Overall, I believe I would obtain around 80% for this assignment, as I believe there would have been many different,
+ * more efficient ways of implementing this problem, and my way of implementing this is no where near perfect. However,
+ * I do believe I have done everything that has been asked of me, including the optional undo and redo, so I should receive
+ * a rather decent mark.
  * </p>
  */
 public class DoubleElimMoc17 implements IManager {
@@ -142,7 +148,8 @@ public class DoubleElimMoc17 implements IManager {
 
 
     /**
-     * The first method that is called when the program will run. This will initialise lastMatch to false, as well as
+     * Gets all players from an ArrayList and then assigns them to the winners queue.
+     * The first method that is called when the program runs. This will initialise lastMatch to false, as well as
      * creating the first instances of the undoStack, redoStack, winnersQueue and losersQueue objects. A for each loop
      * is used to add all the players from the players ArrayList into the winnersQueue queue.
      * @param players the players or teams
@@ -210,6 +217,7 @@ public class DoubleElimMoc17 implements IManager {
     }
 
     /**<p>
+     * Determines who the winner was, then adjusts queues accordingly.
      * A match's scores have been entered into the system, therefore we can clear the redo stack as there will now be
      * nothing to redo. The undo stack will now need to store a new copy of the current state of both the winners and losers
      * by creating a new StateOfQueues object and passing both stateOfWinnersQueue and stateOfLosersQueue into it.
@@ -282,7 +290,8 @@ public class DoubleElimMoc17 implements IManager {
 
     /**
      * <p>
-     * Undo took a rather long time to implement. At first I was trying to store the names of the players that needed to
+     * Undoes the what was previously entered. Undo took a rather long time to implement.
+     * At first I was trying to store the names of the players that needed to
      * be stored in undo and a number that indicated where they came from. I stored these in a class called StateOfMatch.
      * However, as I was implementing this, I decided that just storing the queues as I went along would be easier to implement,
      * so I changed the class name and what it stored, and got to creating my undo method. First thing was to check if you can
@@ -302,7 +311,8 @@ public class DoubleElimMoc17 implements IManager {
 
     /**
      * <p>
-     * Redo took a lot longer than undo to implement. At first, both undo and redo had different algorithms. I was trying
+     * Redoes the last undo call. Redo took a lot longer than undo to implement.
+     * At first, both undo and redo had different algorithms. I was trying
      * to store winnersQueue and losersQueue in redo as I believed that I should of been storing what the queues were at that
      * time, rather than the state of the queues at the start of the match. This led to queues being left empty, or just containing
      * information that just did not make sense. As I started redesigning my redo, it became to look more and more like my
@@ -321,6 +331,7 @@ public class DoubleElimMoc17 implements IManager {
 
     /**
      * <p>
+     * The algorithm that will undo or redo based on where it was called from.
      * First we must push the current state of the queues into either the undo or redo stack, which is dependent on
      * where it was called from. We then have to take the queues out from the stack that needs to have the queues taken
      * from. The winnersQueue will then need to be set to what has been popped from the stack by calling the getWinnersQueue
@@ -362,7 +373,7 @@ public class DoubleElimMoc17 implements IManager {
     /**
      * Takes a queue object, copies all the contents from the queue object and places it into a new queue object, then
      * returns the new queue object.
-     * @param queue
+     * @param queue Queue to be copied
      * @return A new queue object
      */
     private Queue<String> copyQueue(Queue<String> queue){
